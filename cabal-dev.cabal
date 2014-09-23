@@ -106,7 +106,7 @@ Executable cabal-dev
       filepath >= 1.1 && < 1.4,
       Cabal >= 1.10.0.0 && < 1.22,
       -- HTTP: cabal update fails for our hackage server with newer HTTP versions, https://github.com/haskell/HTTP/issues/68
-      HTTP == 4000.2.16.*
+      HTTP == 4000.2.16.*,
       mtl >= 1.1 && < 2.2,
       network >= 2.2 && < 2.5,
       pretty >= 1.0 && < 1.2,
