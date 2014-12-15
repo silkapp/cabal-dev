@@ -212,6 +212,7 @@ fromFlag (Verbose s)          = mempty { cfgVerbosity = v }
             Just _         -> Nothing -- XXX: we are ignoring
                                       -- verbosity parse errors
 fromFlag (CabalInstallArg a) = mempty { passthroughArgs = [a] }
+fromFlag (NoUserConfig     ) = mempty { useUserConfig = False }
 fromFlag _                   = mempty
 
 fromFlags :: Config -> [GlobalFlag] -> Config
