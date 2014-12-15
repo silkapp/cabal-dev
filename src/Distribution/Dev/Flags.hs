@@ -192,7 +192,7 @@ data Config = Config { cfgVerbosity     :: Maybe Verbosity
                      , passthroughArgs  :: [String]
                      , extraConfigFiles :: [String]
                      , useUserConfig :: Bool
-                     }
+                     } deriving Show
 
 instance Monoid Config where
     mempty = Config Nothing Nothing Nothing Nothing [] [] True
