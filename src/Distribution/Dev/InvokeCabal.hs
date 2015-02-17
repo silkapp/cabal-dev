@@ -7,7 +7,8 @@ module Distribution.Dev.InvokeCabal
     )
 where
 
-import Control.Applicative ( (<$>) )
+import Control.Applicative
+import System.Environment
 import Distribution.Verbosity ( Verbosity, showForCabal )
 import Distribution.Simple.Program ( Program( programFindLocation )
                                    , ConfiguredProgram
@@ -104,6 +105,17 @@ setup s cabal flgs cc = do
                  foldr (flip mergeFields) userFields (devFields:extraConfigs)
 
       writeUTF8File cfgOut cOut
+
+      -- Super wizard hackery to append constraints to the sandbox cabal.config
+      env <- getEnvironment
+      let l nm = lookup nm env
+      let ress = (,) <$> l "C_FREEZE_FILE" <*> l "C_SANDBOX_FILE"
+      case ress of
+        Nothing -> return ()
+        Just (cFreezeFile, cSandboxConf) -> do
+          freeze <- readFile cFreezeFile
+          appendFile cSandboxConf $ "\n" ++ freeze
+
       (gOpts, cOpts) <- extraArgs v cfgOut (getVersion s)
       let gFlags = map toArg gOpts
           cFlags = map toArg $ filter (CI.supportsLongOption cc . fst) cOpts
