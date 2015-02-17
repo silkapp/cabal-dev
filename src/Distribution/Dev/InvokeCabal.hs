@@ -98,7 +98,7 @@ setup s cabal flgs cc = do
                     else return []
       cabalHome <- CI.configDir features
       let rew = R.Rewrite cabalHome (sandbox s) (pkgConf s) (CI.needsQuotes features)
-          cOut = show $ R.ppTopLevel $ concat $
+          cOut = show $ R.ppTopLevel $ lConcat $
                  R.rewriteCabalConfig rew $
                  removeFlaggedFields $
                  foldr (flip mergeFields) userFields (devFields:extraConfigs)
@@ -181,3 +181,6 @@ ghcPkgCompatProgram  = p { programFindLocation =
                          }
     where
       p = simpleProgram "ghc-pkg-6_8-compat"
+
+lConcat :: [[a]] -> [a]
+lConcat = concat

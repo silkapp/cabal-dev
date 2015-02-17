@@ -5,7 +5,7 @@ output.
 
  -}
 module Distribution.Dev.InterrogateCabalInstall
-    ( CabalCommandStr
+    ( CabalCommandStr (..)
     , ccStr
     , parseCabalHelp
     , Option(..)
@@ -14,7 +14,6 @@ module Distribution.Dev.InterrogateCabalInstall
     , optParseFlags
     , getCabalCommandHelp
     , getCabalHelp
-    , getCabalCommands
     , Program
     , progStr
     , getCabalProgs
@@ -31,16 +30,18 @@ import Distribution.Verbosity ( verbose )
 
 -- |A cabal-install command name
 newtype CabalCommandStr = CabalCommandStr { ccStr :: String }
+  deriving Show
 
 newtype Program = Program { progStr :: String } deriving (Show, Eq)
 
 -- |Get the command names from a String containing the output of
 -- cabal-install --help
 parseCabalHelp :: String -> [CabalCommandStr]
-parseCabalHelp = map (CabalCommandStr . extractName) .
-                 takeCommands .
-                 dropTillCommands .
-                 lines
+parseCabalHelp = map (CabalCommandStr . extractName)
+               . filter (not . isPrefixOf " [")
+               . takeCommands
+               . dropTillCommands
+               . lines
     where
       extractName = takeWhile (not . isSpace) . dropWhile isSpace
       takeCommands = takeWhile (not . all isSpace)
@@ -160,11 +161,6 @@ getCabalCommandHelp c = rawSystemStdout verbose "cabal" [ccStr c, "--help"]
 -- |Obtain the top-level --help output for cabal-install
 getCabalHelp :: IO String
 getCabalHelp = rawSystemStdout verbose "cabal" ["--help"]
-
--- |Invoke cabal-install in order to determine what commands it
--- supports.
-getCabalCommands :: IO [CabalCommandStr]
-getCabalCommands = parseCabalHelp <$> getCabalHelp
 
 getCabalProgs :: IO [Program]
 getCabalProgs = parseProgs <$> getCabalCommandHelp (CabalCommandStr "install")

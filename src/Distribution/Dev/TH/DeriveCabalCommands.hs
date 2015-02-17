@@ -1,17 +1,17 @@
 module Distribution.Dev.TH.DeriveCabalCommands
-    ( getCabalCommands
-    , deriveCabalCommands
+    ( deriveCabalCommands
     , mkCabalCommandsDef
     , optParseFlags
     )
 where
 
 import Control.Applicative ( (<$>), (<*>) )
+import Debug.Trace
 import Data.Char ( toUpper  )
 import Language.Haskell.TH
 import Distribution.Dev.InterrogateCabalInstall
-    ( Option(..), OptionName(..), ArgType(..), CabalCommandStr, ccStr
-    , optParseFlags, getCabalCommandHelp, getCabalCommands, Program
+    ( Option(..), OptionName(..), ArgType(..), CabalCommandStr (..)
+    , optParseFlags, getCabalCommandHelp, Program
     , getCabalProgs
     )
 
@@ -53,19 +53,47 @@ mkGetSupportedOptionsIO ccs =
     (mkGetSupportedOptions <$> getCabalProgs)
     <*> (zip ccs <$> mapM getCabalCommandHelp ccs)
 
-mkCabalCommandsDef :: [CabalCommandStr] -> IO [Dec]
-mkCabalCommandsDef strs =
-    do putStrLn "Interrogating cabal-install executable:"
-       concat <$> mapM ($ strs)
-                  [ return . return . cabalCommandsDef
-                  , return . mkStrToCmd
-                  , return . mkCmdToStr
-                  , return . mkAllCommands
-                  , mkGetSupportedOptionsIO
-                  ]
+mkCabalCommandsDef :: IO [Dec]
+mkCabalCommandsDef = do
+    let strs = map CabalCommandStr $
+                 [ "install"
+                 , "update"
+                 , "list"
+                 , "info"
+                 , "fetch"
+                 , "freeze"
+                 , "get"
+                 , "check"
+                 , "sdist"
+                 , "upload"
+                 , "report"
+                 , "run"
+                 , "init"
+                 , "configure"
+                 , "build"
+                 , "repl"
+                 , "sandbox"
+                 , "haddock"
+                 , "exec"
+                 , "copy"
+                 , "clean"
+                 , "hscolour"
+                 , "register"
+                 , "test"
+                 , "bench"
+                 , "help"
+                 ]
+    putStrLn "Interrogating cabal-install executable:"
+    fmap concat . mapM ($ strs) $
+               [ return . return . cabalCommandsDef
+               , return . mkStrToCmd
+               , return . mkCmdToStr
+               , return . mkAllCommands
+               , mkGetSupportedOptionsIO
+               ]
 
 deriveCabalCommands :: Q [Dec]
-deriveCabalCommands = runIO $ mkCabalCommandsDef =<< getCabalCommands
+deriveCabalCommands = runIO mkCabalCommandsDef
 
 mkAllCommands :: [CabalCommandStr] -> [Dec]
 mkAllCommands cmds =
