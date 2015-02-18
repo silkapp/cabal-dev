@@ -1,5 +1,5 @@
 Name:                cabal-dev
-Version:             0.9.2.0.104
+Version:             0.9.2.0.105
 Synopsis:            Manage sandboxed Haskell build environments
 
 Description:         cabal-dev is a tool for managing development builds of
@@ -41,7 +41,7 @@ Bug-Reports:         http://github.com/creswick/cabal-dev/issues
 Copyright:           2010-2013 Galois, Inc.
 Category:            Development
 Build-type:          Custom
-Cabal-version:       >=1.6
+Cabal-version:       >=1.8
 Data-Files:
   admin/cabal-config.in,
   admin/00-index.tar
