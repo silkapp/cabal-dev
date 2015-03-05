@@ -4,17 +4,14 @@ Merge configuration files for Cabal (and cabal-install).
 
 -}
 module Distribution.Dev.MergeCabalConfig
-    ( mergeFields
-    , isFlaggedForRemoval
-    , filterFields
-    , removeFlaggedFields
-    )
-where
+  ( mergeFields
+  , removeFlaggedFields
+  ) where
 
-import Data.Maybe              ( fromMaybe, mapMaybe )
-import Control.Monad           ( guard )
-import Control.Applicative     ( Applicative, Alternative, pure, empty, (<|>), (<$>) )
-import Distribution.ParseUtils ( Field(..) )
+import Control.Applicative (Alternative, Applicative, empty, pure, (<$>), (<|>))
+import Control.Monad (guard)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Distribution.ParseUtils (Field (..))
 
 -- |Merge two lists of fields.
 --

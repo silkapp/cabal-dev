@@ -1,56 +1,54 @@
 {- Copyright (c) 2011 Galois, Inc. -}
-{-# LANGUAGE CPP #-}
 module Distribution.Dev.Flags
-    ( GlobalFlag(..)
+  ( GlobalFlag(Version)
 
-    , Config
-    , getCabalConfig
-    , getSandbox
-    , sandboxSpecified
-    , getVerbosity
-    , fromFlags
-    , passthroughArgs
-    , cfgCabalInstall
-    , extraConfigFiles
-    , useUserConfig
+  , Config
+  , getCabalConfig
+  , getSandbox
+  , sandboxSpecified
+  , getVerbosity
+  , fromFlags
+  , passthroughArgs
+  , cfgCabalInstall
+  , extraConfigFiles
+  , useUserConfig
 
-    , getEnvVars
-    , globalOpts
-    , parseGlobalFlags
-    , helpRequested
-    , getOpt''
-    )
-where
+  , getEnvVars
+  , globalOpts
+  , parseGlobalFlags
+  , helpRequested
+  , getOpt''
+  ) where
 
-import Control.Monad          ( liftM, mplus )
-import Data.Monoid            ( Monoid(..) )
-import Data.List              ( intercalate )
-import Data.Maybe             ( fromMaybe, isJust, maybeToList, listToMaybe,
-                                catMaybes )
-import Data.Foldable          ( foldMap )
-import System.FilePath        ( (</>) )
-import System.IO.Error        ( isDoesNotExistError )
-import Control.Exception      ( tryJust )
-import Distribution.ReadE     ( runReadE )
-import Distribution.Verbosity ( Verbosity, normal, verbose, flagToVerbosity )
-import Paths_cabal_dev        ( getDataFileName )
-import System.Console.GetOpt  ( OptDescr(..), ArgOrder(..), ArgDescr(..)
-                              , getOpt', getOpt
-                              )
-import System.Environment     ( getEnv )
+import Control.Exception (tryJust)
+import Control.Monad (liftM, mplus)
+import Data.Foldable (foldMap)
+import Data.List (intercalate)
+import Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe, maybeToList)
+import Data.Monoid (Monoid (..))
+import Distribution.ReadE (runReadE)
+import Distribution.Verbosity (Verbosity, flagToVerbosity, normal, verbose)
+import System.Console.GetOpt (ArgDescr (..), ArgOrder (..), OptDescr (..), getOpt, getOpt')
+import System.Environment (getEnv)
+import System.FilePath ((</>))
+import System.IO.Error (isDoesNotExistError)
 
-import qualified Distribution.Dev.CabalInstall as CI
+import Paths_cabal_dev (getDataFileName)
+import qualified Distribution.Dev.CabalInstall            as CI (commandOptions, stringToCommand)
+import qualified Distribution.Dev.InterrogateCabalInstall as CI (ArgType (NoArg, Opt, Req), Option (Option), OptionName (Short, LongOption))
 
-data GlobalFlag = Help
-                | Verbose (Maybe String)
-                | Sandbox FilePath
-                | CabalConf FilePath
-                | Version Bool
-                | CabalInstallArg String
-                | WithCabalInstall FilePath
-                | ExtraConfig FilePath
-                | NoUserConfig
-                  deriving (Eq, Show)
+
+data GlobalFlag
+  = Help
+  | Verbose (Maybe String)
+  | Sandbox FilePath
+  | CabalConf FilePath
+  | Version Bool
+  | CabalInstallArg String
+  | WithCabalInstall FilePath
+  | ExtraConfig FilePath
+  | NoUserConfig
+  deriving (Eq, Show)
 
 globalOpts :: [OptDescr GlobalFlag]
 globalOpts = [ Option "h?" ["help"] (NoArg Help) "Show help text"
@@ -191,7 +189,7 @@ data Config = Config { cfgVerbosity     :: Maybe Verbosity
                      , cfgCabalInstall  :: Maybe FilePath
                      , passthroughArgs  :: [String]
                      , extraConfigFiles :: [String]
-                     , useUserConfig :: Bool
+                     , useUserConfig    :: Bool
                      } deriving Show
 
 instance Monoid Config where

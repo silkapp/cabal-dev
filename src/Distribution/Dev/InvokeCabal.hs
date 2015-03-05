@@ -1,51 +1,26 @@
 {-# LANGUAGE CPP #-}
 module Distribution.Dev.InvokeCabal
-    ( actions
-    , setup
-    , extraArgs
-    , cabalArgs
-    )
-where
+  ( actions
+  , setup
+  , cabalArgs
+  ) where
 
 import Control.Applicative
+import Distribution.ParseUtils (Field)
+import Distribution.Simple.Program (ConfiguredProgram, runProgram)
+import Distribution.Simple.Utils (debug, writeUTF8File)
+import Distribution.Verbosity (Verbosity, showForCabal)
+import System.Console.GetOpt (OptDescr)
 import System.Environment
-import Distribution.Verbosity ( Verbosity, showForCabal )
-import Distribution.Simple.Program ( Program( programFindLocation )
-                                   , ConfiguredProgram
-                                   , emptyProgramConfiguration
-                                   , locationPath
-                                   , programLocation
-                                   , requireProgram
-                                   , runProgram
-                                   , simpleProgram
-                                   )
-import Distribution.Simple.Utils ( writeUTF8File, debug, cabalVersion)
-import Distribution.ParseUtils ( Field )
-import Distribution.Version ( Version(..) )
-import System.Console.GetOpt  ( OptDescr )
 
-import Distribution.Dev.Command            ( CommandActions(..)
-                                           , CommandResult(..)
-                                           )
-import Distribution.Dev.Flags              ( Config, getCabalConfig
-                                           , getVerbosity, passthroughArgs
-                                           , cfgCabalInstall, extraConfigFiles
-                                           , useUserConfig
-                                           )
-import Distribution.Dev.InitPkgDb          ( initPkgDb )
-import qualified Distribution.Dev.RewriteCabalConfig as R
-import qualified Distribution.Dev.CabalInstall as CI
-import Distribution.Dev.Sandbox            ( resolveSandbox
-                                           , cabalConf
-                                           , Sandbox
-                                           , KnownVersion
-                                           , PackageDbType(..)
-                                           , getVersion
-                                           , pkgConf
-                                           , sandbox
-                                           )
-import Distribution.Dev.Utilities          ( ensureAbsolute )
-import Distribution.Dev.MergeCabalConfig   ( mergeFields, removeFlaggedFields )
+import Distribution.Dev.Command (CommandActions (..), CommandResult (..))
+import Distribution.Dev.Flags (Config, cfgCabalInstall, extraConfigFiles, getCabalConfig, getVerbosity, passthroughArgs, useUserConfig)
+import Distribution.Dev.InitPkgDb (initPkgDb)
+import Distribution.Dev.MergeCabalConfig (mergeFields, removeFlaggedFields)
+import Distribution.Dev.Sandbox (KnownVersion, Sandbox, cabalConf, pkgConf, resolveSandbox, sandbox)
+import qualified Distribution.Dev.CabalInstall       as CI (CabalCommand, commandToString, configDir, findOnPath, getFeatures, getUserConfig,
+                                                            supportsLongOption)
+import qualified Distribution.Dev.RewriteCabalConfig as R (Rewrite (Rewrite), ppTopLevel, readConfigF, readConfigF_, rewriteCabalConfig)
 
 actions :: CI.CabalCommand -> CommandActions
 actions cc = CommandActions
@@ -63,8 +38,8 @@ invokeCabal flgs cc args = do
   case res of
     Left err -> return $ CommandError err
     Right args' -> do
-             runProgram v cabal $ args' ++ args
-             return CommandOk
+      runProgram v cabal $ args' ++ args
+      return CommandOk
 
 cabalArgs :: ConfiguredProgram -> Config -> CI.CabalCommand -> IO (Either String [String])
 cabalArgs cabal flgs cc = do
@@ -72,19 +47,18 @@ cabalArgs cabal flgs cc = do
   s <- initPkgDb v =<< resolveSandbox flgs
   setup s cabal flgs cc
 
-getUserConfigFields :: CI.CabalFeatures -> IO [Field]
-getUserConfigFields fs =
+getUserConfigFields :: IO [Field]
+getUserConfigFields =
     -- If we fail to read the file, then it could be that it doesn't yet
     -- exist, and it's OK to ignore.
-    either (const []) id <$> (R.readConfigF =<< CI.getUserConfig fs)
+    either (const []) id <$> (R.readConfigF =<< CI.getUserConfig)
 
 -- XXX: this should return an error string instead of calling "error"
 -- on failure.
 getDevConfigFields :: Config -> IO [Field]
 getDevConfigFields cfg = R.readConfigF_ =<< getCabalConfig cfg
 
-setup :: Sandbox KnownVersion -> ConfiguredProgram -> Config ->
-         CI.CabalCommand -> IO (Either String [String])
+setup :: Sandbox KnownVersion -> ConfiguredProgram -> Config -> CI.CabalCommand -> IO (Either String [String])
 setup s cabal flgs cc = do
   let v = getVerbosity flgs
   cVer <- CI.getFeatures v cabal
@@ -92,17 +66,15 @@ setup s cabal flgs cc = do
   extraConfigs <- mapM R.readConfigF_ $ extraConfigFiles flgs
   let cfgOut = cabalConf s
   case cVer of
-    Left err -> return $ Left err
-    Right features -> do
-      userFields <- if useUserConfig flgs
-                    then getUserConfigFields features
-                    else return []
-      cabalHome <- CI.configDir features
-      let rew = R.Rewrite cabalHome (sandbox s) (pkgConf s) (CI.needsQuotes features)
-          cOut = show $ R.ppTopLevel $ lConcat $
-                 R.rewriteCabalConfig rew $
-                 removeFlaggedFields $
-                 foldr (flip mergeFields) userFields (devFields:extraConfigs)
+    Just err -> return $ Left err
+    Nothing -> do
+      userFields <- if useUserConfig flgs then getUserConfigFields else return []
+      cabalHome <- CI.configDir
+      let rew = R.Rewrite cabalHome (sandbox s) (pkgConf s)
+          cOut = show . R.ppTopLevel . concat
+               . R.rewriteCabalConfig rew
+               . removeFlaggedFields
+               $ foldr (flip mergeFields) userFields (devFields:extraConfigs)
 
       writeUTF8File cfgOut cOut
 
@@ -116,7 +88,7 @@ setup s cabal flgs cc = do
           freeze <- readFile cFreezeFile
           appendFile cSandboxConf $ "\n" ++ freeze
 
-      (gOpts, cOpts) <- extraArgs v cfgOut (getVersion s)
+      (gOpts, cOpts) <- extraArgs v cfgOut
       let gFlags = map toArg gOpts
           cFlags = map toArg $ filter (CI.supportsLongOption cc . fst) cOpts
           args = concat
@@ -140,59 +112,17 @@ setup s cabal flgs cc = do
       return $ Right args
 
 toArg :: Option -> String
-toArg (a, mb) = showString "--" .
-                showString a $ maybe "" ('=':) mb
+toArg (a, mb) = showString "--" . showString a $ maybe "" ('=':) mb
 
 -- option name, value
 type Option = (String, Maybe String)
-type Options = [Option]
 
-extraArgs :: Verbosity -> FilePath -> PackageDbType -> IO (Options, Options)
-extraArgs v cfg pdb =
-    do pdbArgs <- getPdbArgs
-       return ([cfgFileArg], verbosityArg:pdbArgs)
-    where
-      longArg s = (,) s . Just
-      cfgFileArg = longArg "config-file" cfg
-      verbosityArg = longArg "verbose" $ showForCabal v
-      withGhcPkg = longArg "with-ghc-pkg"
-      getPdbArgs =
-          case pdb of
-            (GHC_6_8_Db loc) | needsGHC68Compat -> do
-                     -- Make Cabal call the wrapper that removes the
-                     -- bad argument to ghc-pkg 6.8
-                     debug v $ "Using GHC 6.8 compatibility wrapper for Cabal shortcoming"
-                     (ghcPkgCompat, _) <-
-                         requireProgram v ghcPkgCompatProgram emptyProgramConfiguration
-                     return $ [ longArg "ghc-pkg-options" $ toArg $ withGhcPkg loc
-                              , withGhcPkg $ locationPath $
-                                programLocation ghcPkgCompat
-                              ]
-            _ -> return []
-
--- XXX: this is very imprecise. Right now, we require a specific
--- version of Cabal, so this is ok (and is equivalent to True). Note
--- that this is the version of Cabal that THIS PROGRAM is being built
--- against, rather than the version that CABAL-INSTALL was built
--- against.
-needsGHC68Compat :: Bool
-needsGHC68Compat = cabalVersion < Version [1, 9] []
-
-ghcPkgCompatProgram :: Program
-ghcPkgCompatProgram  = p { programFindLocation =
-#if MIN_VERSION_Cabal(1,18,0)
-                           \v x -> do
-                             res <- programFindLocation p v x
-#else
-                           \v -> do
-                             res <- programFindLocation p v
-#endif
-                             case res of
-                               Nothing -> return Nothing
-                               Just loc -> Just `fmap` ensureAbsolute loc
-                         }
-    where
-      p = simpleProgram "ghc-pkg-6_8-compat"
-
-lConcat :: [[a]] -> [a]
-lConcat = concat
+extraArgs :: Verbosity -> FilePath -> IO ([Option], [Option])
+extraArgs v cfg = do
+  pdbArgs <- getPdbArgs
+  return ([cfgFileArg], verbosityArg:pdbArgs)
+  where
+    longArg s = (,) s . Just
+    cfgFileArg = longArg "config-file" cfg
+    verbosityArg = longArg "verbose" $ showForCabal v
+    getPdbArgs = return []

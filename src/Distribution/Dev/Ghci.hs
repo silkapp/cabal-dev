@@ -1,30 +1,24 @@
-module Distribution.Dev.Ghci
-   ( actions )
-where
+module Distribution.Dev.Ghci (actions) where
 
-import Control.Applicative ( (<$>), (<|>) )
-import Data.List ( stripPrefix )
-import Distribution.Simple.Program ( emptyProgramConfiguration
-                                   , runProgram
-                                   , requireProgram
-                                   , ghcProgram
-                                   )
-import System.Console.GetOpt       ( OptDescr(..), ArgDescr(..) )
+import Control.Applicative ((<$>), (<|>))
+import Data.List (stripPrefix)
+import Distribution.Simple.Program (emptyProgramConfiguration, ghcProgram, requireProgram, runProgram)
+import System.Console.GetOpt (ArgDescr (..), OptDescr (..))
 
-import Distribution.Dev.Command   ( CommandActions(..), CommandResult(..) )
-import Distribution.Dev.Flags     ( Config, getVerbosity )
-import Distribution.Dev.BuildOpts ( getBuildArgs )
+import Distribution.Dev.BuildOpts (getBuildArgs)
+import Distribution.Dev.Command (CommandActions (..), CommandResult (..))
+import Distribution.Dev.Flags (Config, getVerbosity)
 
 actions :: CommandActions
 actions = CommandActions
-              { cmdDesc = "Run ghci configured as per the specified cabal file."
-              , cmdRun = \cfg opts args -> invokeGhci cfg opts args
-              , cmdOpts = [ Option "t" ["target"] (ReqArg id "TARGET") $
-                            "Use TARGET executable or test suite's context " ++
-                            "instead of the package."
-                          ]
-              , cmdPassFlags = True
-              }
+  { cmdDesc = "Run ghci configured as per the specified cabal file."
+  , cmdRun = \cfg opts args -> invokeGhci cfg opts args
+  , cmdOpts = [ Option "t" ["target"] (ReqArg id "TARGET") $
+                "Use TARGET executable or test suite's context " ++
+                "instead of the package."
+              ]
+  , cmdPassFlags = True
+  }
 
 invokeGhci :: Config -> [String] -> [String] -> IO CommandResult
 invokeGhci cfg opts args = do
@@ -59,20 +53,21 @@ selectArgs targetName argsList = do
         []    -> Left "Failed to extract GHC build arguments"
 
 data Target = Package | Executable String
-            deriving Eq
+  deriving Eq
 
 argsByTarget :: [[String]] -> Either String [(Target, [String])]
 argsByTarget = mapM (\a -> fmap (flip (,) a) $ inferTarget a)
-  where inferTarget args = case exec args <|> package args of
-          Just t  -> Right t
-          Nothing -> Left "Failed to infer target for GHC build arguments"
+  where
+    inferTarget args = case exec args <|> package args of
+      Just t  -> Right t
+      Nothing -> Left "Failed to infer target for GHC build arguments"
 
-        exec args =
-          case break (== "-o") args of
-            (_, _:path:_) -> Executable . takeWhile (/= '/') <$>
-                             stripPrefix "dist/build/" path
-            (_, _)        -> Nothing
-        package args =
-          case break (== "-package-name") args of
-            (_, _:_pkg:_) -> Just Package
-            (_, _)        -> Nothing
+    exec args =
+      case break (== "-o") args of
+        (_, _:path:_) -> Executable . takeWhile (/= '/') <$>
+                         stripPrefix "dist/build/" path
+        (_, _)        -> Nothing
+    package args =
+      case break (== "-package-name") args of
+        (_, _:_pkg:_) -> Just Package
+        (_, _)        -> Nothing

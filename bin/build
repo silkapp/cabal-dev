@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-runhaskell -isrc admin/bootstrap.hs "$@"

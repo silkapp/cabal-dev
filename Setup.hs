@@ -1,15 +1,14 @@
-import Control.Monad ( unless )
+import Control.Monad (unless)
+import Distribution.PackageDescription (PackageDescription (..), buildInfo, exeName, executables, hsSourceDirs)
 import Distribution.Simple
-import Distribution.Simple.Program.Types ( Program(..), simpleProgram )
-import Distribution.PackageDescription ( PackageDescription(..), executables,
-                                         hsSourceDirs, exeName, buildInfo )
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo, buildDir )
-import Distribution.Simple.Setup ( BuildFlags, buildVerbose )
-import Distribution.Simple.Utils ( rawSystemExit, findProgramVersion)
-import Distribution.Verbosity ( Verbosity )
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, buildDir)
+import Distribution.Simple.Program.Types (Program (..), simpleProgram)
+import Distribution.Simple.Setup (BuildFlags, buildVerbose)
+import Distribution.Simple.Utils (findProgramVersion, rawSystemExit)
+import Distribution.Verbosity (Verbosity)
 
-import System.Directory ( doesDirectoryExist )
-import System.FilePath ( (</>) )
+import System.Directory (doesDirectoryExist)
+import System.FilePath ((</>))
 
 main = defaultMainWithHooks $
        simpleUserHooks { hookedPrograms = [cabalInstallProgram]

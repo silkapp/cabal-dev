@@ -1,26 +1,25 @@
 module Distribution.Dev.BuildOpts
-    ( getBuildArgs
-    , actions
-    )
-where
+  ( getBuildArgs
+  , actions
+  ) where
 
-import Distribution.Dev.GhcArgs ( extractGHCArgs, formatGHCArgs )
-import Control.Applicative ( (<$>) )
-import Distribution.Dev.Command ( CommandActions(..), CommandResult(..) )
-import Distribution.Dev.Flags ( Config, getVerbosity, cfgCabalInstall )
-import Distribution.Simple.Program ( getProgramOutput )
-import System.Console.GetOpt  ( OptDescr )
+import Control.Applicative ((<$>))
+import Distribution.Dev.Command (CommandActions (..), CommandResult (..))
+import Distribution.Dev.Flags (Config, cfgCabalInstall, getVerbosity)
+import Distribution.Dev.GhcArgs (extractGHCArgs, formatGHCArgs)
+import Distribution.Simple.Program (getProgramOutput)
+import System.Console.GetOpt (OptDescr)
 
-import qualified Distribution.Dev.CabalInstall as CI
-import Distribution.Dev.InvokeCabal ( cabalArgs )
+import Distribution.Dev.InvokeCabal (cabalArgs)
+import qualified Distribution.Dev.CabalInstall as CI (CabalCommand (Build), findOnPath)
 
 actions :: CommandActions
 actions = CommandActions
-              { cmdDesc = "Output the build arguments that Cabal would give to GHC."
-              , cmdRun = \cfg _ args -> run cfg args
-              , cmdOpts = [] :: [OptDescr ()]
-              , cmdPassFlags = True
-              }
+  { cmdDesc = "Output the build arguments that Cabal would give to GHC."
+  , cmdRun = \cfg _ args -> run cfg args
+  , cmdOpts = [] :: [OptDescr ()]
+  , cmdPassFlags = True
+  }
 
 run :: Config -> [String] -> IO CommandResult
 run cfg args = do

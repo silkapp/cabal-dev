@@ -1,26 +1,16 @@
-{-# LANGUAGE CPP #-}
-module Distribution.Dev.InitPkgDb
-    ( initPkgDb
-    )
-where
+module Distribution.Dev.InitPkgDb (initPkgDb) where
 
+import Control.Monad (unless)
+import Data.Maybe (fromMaybe)
+import Distribution.Simple.Program (ConfiguredProgram, ghcPkgProgram, programVersion, requireProgram)
+import Distribution.Simple.Program (emptyProgramConfiguration, rawSystemProgram)
+import Distribution.Simple.Utils (info)
+import Distribution.Text (display)
+import Distribution.Verbosity (Verbosity)
+import Distribution.Version (Version (..))
+import System.Directory (doesDirectoryExist)
 
-import Control.Monad ( unless )
-import Distribution.Simple.Program ( ghcPkgProgram, requireProgram
-                                   , programVersion, ConfiguredProgram
-                                   , programLocation, locationPath
-                                   )
-import Distribution.Version ( Version(..) )
-import Distribution.Verbosity ( Verbosity )
-import Distribution.Simple.Utils ( info )
-
-import Distribution.Simple.Program ( rawSystemProgram, emptyProgramConfiguration )
-import Distribution.Text ( display )
-
-import System.Directory ( doesFileExist, doesDirectoryExist )
-
-import Distribution.Dev.Sandbox ( Sandbox, pkgConf, PackageDbType(..)
-                                , UnknownVersion, KnownVersion, setVersion )
+import Distribution.Dev.Sandbox (KnownVersion, Sandbox, UnknownVersion, pkgConf, setVersion)
 
 -- |Initialize a package database.
 --
@@ -38,37 +28,16 @@ initPkgDb v s = do
       run     = rawSystemProgram
 
   ghcPkg <- fst `fmap` require ghcPkgProgram
-  let (ver, typ) = ghcPackageDbType ghcPkg
-      s' = setVersion s typ ver
+  let ver = ghcPackageDbType ghcPkg
+      s' = setVersion s ver
       pth = pkgConf s'
 
-  if typ >= GHC_6_12_Db
-    then do
-      e <- doesDirectoryExist pth
-      unless e $ run v ghcPkg ["init", pth]
-    else do
-      e <- doesFileExist pth
-      unless e $ writeFile pth "[]"
+  e <- doesDirectoryExist pth
+  unless e $ run v ghcPkg ["init", pth]
 
-  info v $ "Using ghc-pkg " ++ display ver ++
-       case typ of
-         GHC_6_8_Db _ -> " wrapper"
-         _ -> ""
+  info v $ "Using ghc-pkg " ++ display ver
 
   return s'
 
-ghcPackageDbType :: ConfiguredProgram -> (Version, PackageDbType)
-ghcPackageDbType p =
-    case res of
-      Nothing -> error "Unknown ghc version!"
-      Just v  -> v
-    where
-      res = do
-        v <- programVersion p
-        -- XXX Needs updated for ghc 7
-        let typ | v < Version [6, 10] [] = GHC_6_8_Db $ locationPath $
-                                           programLocation p
-                | v < Version [6, 12] [] = GHC_6_10_Db
-                | v >= Version [7, 5] [] = GHC_7_5_Plus_Db
-                | otherwise              = GHC_6_12_Db
-        return (v, typ)
+ghcPackageDbType :: ConfiguredProgram -> Version
+ghcPackageDbType = fromMaybe (error "Unknown ghc version!") . programVersion

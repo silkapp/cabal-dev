@@ -5,28 +5,25 @@ output.
 
  -}
 module Distribution.Dev.InterrogateCabalInstall
-    ( CabalCommandStr (..)
-    , ccStr
-    , parseCabalHelp
-    , Option(..)
-    , OptionName(..)
-    , ArgType(..)
-    , optParseFlags
-    , getCabalCommandHelp
-    , getCabalHelp
-    , Program
-    , progStr
-    , getCabalProgs
-    )
-where
+  ( CabalCommandStr (CabalCommandStr, ccStr)
+  , parseCabalHelp
+  , Option(Option)
+  , OptionName(Short, LongOption)
+  , ArgType(Req, Opt, NoArg)
+  , optParseFlags
+  , getCabalCommandHelp
+  , Program
+  , progStr
+  , getCabalProgs
+  ) where
 
-import Control.Applicative ( (<$>) )
-import Data.Char ( isSpace, isAsciiUpper, isAsciiLower, ord, isLetter )
-import Data.List ( isPrefixOf, sort )
-import Control.Monad ( guard )
-import Data.Maybe ( mapMaybe )
-import Distribution.Simple.Utils ( rawSystemStdout )
-import Distribution.Verbosity ( verbose )
+import Control.Applicative ((<$>))
+import Control.Monad (guard)
+import Data.Char (isAsciiLower, isAsciiUpper, isLetter, isSpace, ord)
+import Data.List (isPrefixOf, sort)
+import Data.Maybe (mapMaybe)
+import Distribution.Simple.Utils (rawSystemStdout)
+import Distribution.Verbosity (verbose)
 
 -- |A cabal-install command name
 newtype CabalCommandStr = CabalCommandStr { ccStr :: String }
@@ -157,10 +154,6 @@ optParseFlags progs = extractLongOptions . findOptionLines . lines
 -- |Obtain the --help output for a particular cabal-install command
 getCabalCommandHelp :: CabalCommandStr -> IO String
 getCabalCommandHelp c = rawSystemStdout verbose "cabal" [ccStr c, "--help"]
-
--- |Obtain the top-level --help output for cabal-install
-getCabalHelp :: IO String
-getCabalHelp = rawSystemStdout verbose "cabal" ["--help"]
 
 getCabalProgs :: IO [Program]
 getCabalProgs = parseProgs <$> getCabalCommandHelp (CabalCommandStr "install")

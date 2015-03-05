@@ -9,29 +9,25 @@ This module is written so that it will work out-of-the-box with GHC >=
 6.8 && < 6.13 with no other packages installed.
 
 -}
-{-# LANGUAGE CPP #-}
-
 module Distribution.Dev.RewriteCabalConfig
-    ( rewriteCabalConfig
-    , Rewrite(..)
-    , ppTopLevel
-    , readConfigF
-    , readConfigF_
-    )
-where
+  ( Rewrite (Rewrite)
+  , ppTopLevel
+  , readConfigF
+  , readConfigF_
+  , rewriteCabalConfig
+  ) where
 
-import qualified Control.Exception as Ex ( catch, IOException )
-import Control.Applicative               ( Applicative, pure, (<$>) )
-import Data.Maybe                        ( fromMaybe )
-import Data.Traversable                  ( traverse, Traversable )
-import Distribution.ParseUtils           ( Field(..), readFields, ParseResult(..) )
-import Distribution.Simple.Utils         ( readUTF8File )
+import Control.Applicative (Applicative, pure, (<$>))
+import Data.Maybe (fromMaybe)
+import Data.Traversable (traverse)
+import Distribution.ParseUtils (Field (..), ParseResult (..), readFields)
+import Distribution.Simple.Utils (readUTF8File)
 import Text.PrettyPrint.HughesPJ
+import qualified Control.Exception as Ex (IOException, catch)
 
-data Rewrite = Rewrite { homeDir          :: FilePath
-                       , sandboxDir       :: FilePath
-                       , packageDb        :: FilePath
-                       , quoteInstallDirs :: Bool
+data Rewrite = Rewrite { homeDir    :: FilePath
+                       , sandboxDir :: FilePath
+                       , packageDb  :: FilePath
                        }
 
 readConfig :: String -> Either String [Field]
@@ -54,7 +50,7 @@ readConfigF_ fn = either error id <$> readConfigF fn
 rewriteCabalConfig :: Applicative f => Rewrite -> [Field] -> f [Field]
 rewriteCabalConfig r = rewriteConfig expand (setPackageDb $ packageDb r)
   where
-    expand = expandCabalConfig (quoteInstallDirs r) (homeDir r) (sandboxDir r)
+    expand = expandCabalConfig (homeDir r) (sandboxDir r)
 
 -- |Given an expansion configuration, read the input config file and
 -- write the expansion into the output config file
@@ -103,8 +99,8 @@ ppTopLevel = vcat . map ppField
 --------------------------------------------------
 -- Expanding fields
 
-data Expand f = Expand { eExpand :: String -> f String
-                       , eLeaves :: [String]
+data Expand f = Expand { eExpand   :: String -> f String
+                       , eLeaves   :: [String]
                        , eSections :: [(String, Expand f)]
                        }
 
@@ -133,14 +129,8 @@ don'tExpand = Expand pure [] []
 --
 -- If the cabal-install config file changes, or if this list is not
 -- complete, this code will have to be updated.
-expandCabalConfig :: Applicative f =>
-                     Bool -- ^Whether the install-dirs section of the
-                          -- cabal config file will quote paths.
-                          -- Versions of cabal-install prior to 0.9
-                          -- required quoting. Versions 0.9 and later
-                          -- forbit it.
-                     -> FilePath -> FilePath -> Expand f
-expandCabalConfig shouldQuote home sandbox =
+expandCabalConfig :: Applicative f => FilePath -> FilePath -> Expand f
+expandCabalConfig home sandbox =
     Expand { eExpand = ePath
            , eLeaves = [ "remote-repo-cache"
                        , "local-repo"
@@ -160,7 +150,7 @@ expandCabalConfig shouldQuote home sandbox =
            }
     where
       expandInstallDirs =
-          Expand { eExpand = quote . ePath
+          Expand { eExpand = ePath
                  , eLeaves =
                      [ "prefix"
                      , "bindir"
@@ -175,9 +165,5 @@ expandCabalConfig shouldQuote home sandbox =
                      ]
                  , eSections = []
                  }
-
-      -- How install-dirs should quote its paths
-      quote | shouldQuote = fmap show
-            | otherwise   = id
 
       ePath = pure . expandDot sandbox . expandTilde home

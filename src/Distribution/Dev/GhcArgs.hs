@@ -12,12 +12,11 @@ True
 
 -}
 module Distribution.Dev.GhcArgs
-    ( formatGHCArgs
-    , extractGHCArgs
-    )
-where
+  ( formatGHCArgs
+  , extractGHCArgs
+  ) where
 
-import Data.List ( unfoldr )
+import Data.List (unfoldr)
 
 -- |Format the arguments, bracketed by start end end markers, in a way
 -- that can be easily parsed.
