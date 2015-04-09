@@ -18,8 +18,7 @@ import Distribution.Dev.Flags (Config, cfgCabalInstall, extraConfigFiles, getCab
 import Distribution.Dev.InitPkgDb (initPkgDb)
 import Distribution.Dev.MergeCabalConfig (mergeFields, removeFlaggedFields)
 import Distribution.Dev.Sandbox (KnownVersion, Sandbox, cabalConf, pkgConf, resolveSandbox, sandbox)
-import qualified Distribution.Dev.CabalInstall       as CI (CabalCommand, commandToString, configDir, findOnPath, getFeatures, getUserConfig,
-                                                            supportsLongOption)
+import qualified Distribution.Dev.CabalInstall       as CI (CabalCommand, commandToString, configDir, findOnPath, getFeatures, getUserConfig, supportsLongOption)
 import qualified Distribution.Dev.RewriteCabalConfig as R (Rewrite (Rewrite), ppTopLevel, readConfigF, readConfigF_, rewriteCabalConfig)
 
 actions :: CI.CabalCommand -> CommandActions
@@ -71,7 +70,7 @@ setup s cabal flgs cc = do
       userFields <- if useUserConfig flgs then getUserConfigFields else return []
       cabalHome <- CI.configDir
       let rew = R.Rewrite cabalHome (sandbox s) (pkgConf s)
-          cOut = show . R.ppTopLevel . concat
+          cOut = show . R.ppTopLevel . (concat :: [[Field]] -> [Field])
                . R.rewriteCabalConfig rew
                . removeFlaggedFields
                $ foldr (flip mergeFields) userFields (devFields:extraConfigs)
