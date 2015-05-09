@@ -1,0 +1,14 @@
+import Control.Monad ()
+import Distribution.PackageDescription ()
+import Distribution.Simple
+    ( UserHooks(hookedPrograms),
+      simpleUserHooks,
+      defaultMainWithHooks )
+import Distribution.Simple.LocalBuildInfo ()
+import Distribution.Simple.Program.Types
+    ( Program(..), simpleProgram )
+import Distribution.Simple.Setup ()
+import Distribution.Simple.Utils ( findProgramVersion )
+import Distribution.Verbosity ()
+import System.Directory ()
+import System.FilePath ()

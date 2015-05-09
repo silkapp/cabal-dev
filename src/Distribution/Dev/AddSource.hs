@@ -11,7 +11,7 @@ module Distribution.Dev.AddSource (actions) where
 import Control.Applicative ((<$>), (<*>))
 import Control.Arrow (right)
 import Control.Monad (forM_, guard, (<=<))
-import Control.Monad.Error (runErrorT, throwError)
+import Control.Monad.Except (runExceptT, throwError)
 import Control.Monad.Trans (liftIO)
 import Data.List (isPrefixOf)
 import Distribution.Package (PackageIdentifier (..))
@@ -214,17 +214,16 @@ downloadTarball u = do
 -- |Extract the index information from the supplied path, either as a
 -- tarball or as a local package directory
 processLocalSource :: V.Verbosity -> FilePath -> IO (Either String ((LocalSource, PackageIdentifier, PackageDescription), T.Entry))
-processLocalSource v fn = runErrorT $ do
+processLocalSource v fn = runExceptT $ do
   let cls = classifyLocalSource fn
   src <- case cls of
-           Left u -> do
-              liftIO $ notice v $ "Downloading " ++ show u
-              TarPkg `fmap` eitherErrorIO (downloadTarball u)
-           Right s -> return s
-  (pkgId, c, pkgDesc) <- eitherErrorIO $
-                case src of
-                  TarPkg x -> processTarball x
-                  DirPkg x -> processDirectory v x
+    Left u -> do
+       liftIO $ notice v $ "Downloading " ++ show u
+       TarPkg `fmap` eitherErrorIO (downloadTarball u)
+    Right s -> return s
+  (pkgId, c, pkgDesc) <- eitherErrorIO $ case src of
+    TarPkg x -> processTarball x
+    DirPkg x -> processDirectory v x
   ent <- eitherError $ toIndexEntry pkgId c
   return ((src, pkgId, pkgDesc), ent)
   where
@@ -233,7 +232,7 @@ processLocalSource v fn = runErrorT $ do
 
 -- |Extract the index information from a tarball
 processTarball :: FilePath -> IO (Either String (PackageIdentifier, L.ByteString, PackageDescription))
-processTarball fn =  withBinaryFile fn ReadMode $ \h -> do
+processTarball fn = withBinaryFile fn ReadMode $ \h -> do
   ents <- T.read . Z.decompress <$> L.hGetContents h
   case extractCabalFile ents of
     Nothing -> return $ Left "No cabal file found"
